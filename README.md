@@ -7,7 +7,7 @@ OpenAI GPT model to format the final notation.
 
 ## Setup
 
-1. Install the dependencies:
+1. Install the dependencies (including `python-multipart` for file uploads):
 
 ```bash
 pip install -r requirements.txt
@@ -39,6 +39,8 @@ and see the transcription using the frontend.
 ## GitHub Pages
 
 The repository includes a workflow in `.github/workflows/pages.yml` that
-publishes the static frontend through GitHub Pages. Once Pages is enabled in
-the repository settings and "GitHub Actions" is chosen as the source, every
-push to `main` will deploy the latest `index.html` and `script.js` files.
+publishes the static frontend through GitHub Pages. The workflow now
+attempts to automatically enable Pages during the build. If Pages are not
+yet configured for the repository, the workflow will enable them and deploy
+the site. Once Pages is enabled, every push to `main` will deploy the latest
+`index.html` and `script.js` files.
