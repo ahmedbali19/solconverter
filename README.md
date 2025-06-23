@@ -16,7 +16,11 @@ pip install -r requirements.txt
 2. Download an Onsets & Frames checkpoint and set `ONSETS_FRAMES_CKPT` to the
    path of the checkpoint file.
 
-3. Provide your OpenAI API key via `OPENAI_API_KEY` environment variable.
+3. Create a `.env` file with your OpenAI API key:
+
+   ```bash
+   echo "OPENAI_API_KEY=YOUR_KEY" > .env
+   ```
 
 ## Running the server
 
@@ -28,3 +32,13 @@ uvicorn main:app --reload
 
 Then POST an MP3 file to `http://localhost:8000/transcribe/` and you will get
 JSON containing the solfège notation.
+
+You can also open `index.html` in a browser to record or upload an audio file
+and see the transcription using the frontend.
+
+## GitHub Pages
+
+The repository includes a workflow in `.github/workflows/pages.yml` that
+publishes the static frontend through GitHub Pages. Once Pages is enabled in
+the repository settings and "GitHub Actions" is chosen as the source, every
+push to `main` will deploy the latest `index.html` and `script.js` files.
