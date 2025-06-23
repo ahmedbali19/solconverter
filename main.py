@@ -9,8 +9,14 @@ from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from pydub import AudioSegment
-import openai
 from music21 import converter, key
+
+# OpenAI is optional so we don't fail at import time if the package isn't
+# installed. We'll raise a clear error later if it is required.
+try:
+    import openai
+except Exception:
+    openai = None
 
 # Magenta / note_seq imports for transcription
 try:
@@ -28,16 +34,15 @@ app = FastAPI()
 SOLFA = {1: "Do", 2: "Re", 3: "Mi", 4: "Fa", 5: "Sol", 6: "La", 7: "Ti"}
 
 
-def transcribe_wav(wav_path: str, checkpoint: str):
+def transcribe_wav(wav_path: str, checkpoint: str) -> "music_pb2.NoteSequence":
     """Transcribe a WAV file to a NoteSequence using Magenta."""
     if not infer_util:
         raise RuntimeError("note_seq or Magenta not installed")
-    sequence = infer_util.transcribe_audio(wav_path, checkpoint)
-    return sequence
+    return infer_util.transcribe_audio(wav_path, checkpoint)
 
 
 def parse_midi(midi_path: str):
-    """Parse MIDI with music21 and return list of events."""
+    """Parse MIDI with music21 and return note events with timing and solfège."""
     score = converter.parse(midi_path)
     analysed_key = score.analyze('key')
     events = []
@@ -48,7 +53,8 @@ def parse_midi(midi_path: str):
             events.append({
                 "time": t,
                 "note": n.nameWithOctave,
-                "solfa": solfa
+                "duration": float(n.quarterLength),
+                "solfa": solfa,
             })
     return events
 
@@ -71,7 +77,8 @@ async def transcribe(file: UploadFile = File(...)):
         audio.export(wav_path, format='wav')
 
         # Transcribe to NoteSequence and save MIDI
-        sequence = transcribe_wav(wav_path, 'onsets_frames.ckpt')
+        ckpt = os.getenv("ONSETS_FRAMES_CKPT", "onsets_frames.ckpt")
+        sequence = transcribe_wav(wav_path, ckpt)
         if not midi_io:
             raise RuntimeError("note_seq not installed to write MIDI")
         midi_io.sequence_proto_to_midi_file(sequence, midi_path)
@@ -84,11 +91,14 @@ async def transcribe(file: UploadFile = File(...)):
         json.dumps(events)
     )
 
+    if not openai:
+        raise HTTPException(status_code=500, detail="openai package not installed")
+
     openai.api_key = os.getenv('OPENAI_API_KEY')
     try:
         resp = openai.ChatCompletion.create(
-            model='gpt-3.5-turbo',
-            messages=[{"role": "user", "content": prompt}]
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
         )
         notation = resp.choices[0].message.content.strip()
     except Exception as e:
