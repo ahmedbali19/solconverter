@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pydub
+openai
+music21
+note_seq
